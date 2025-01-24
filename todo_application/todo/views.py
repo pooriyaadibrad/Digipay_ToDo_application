@@ -5,7 +5,13 @@ from rest_framework.views import APIView
 from . import serializers, paginations, models
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 
-
+"""
+    We can use ViewSets or Generic views for API optimization,
+    which requires less code. However,
+    or customizing an API, using APIView is the best choice.
+    This is why I use this technique. 
+    But if you want, other options are also available.
+"""
 class TodoListCreateApiView(APIView):
     """
     this api do post and get http method
