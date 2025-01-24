@@ -21,7 +21,6 @@ class TodoListCreateApiView(APIView):
                        ),
                        status.HTTP_404_NOT_FOUND: OpenApiResponse(
                            description='i see this status when'
-                                       'i have not any data or'
                                        'i have not any response from'
                                        'database'
                        )
@@ -55,11 +54,10 @@ class TodoListCreateApiView(APIView):
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(todo_s, request=request)
 
-        if page is not None:
-            serializer = self.serializer_class(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
 
-        return Response({'details:"not results found."'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.serializer_class(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
 
     @extend_schema(tags=['ToDo'],
                    summary='this post todo information to server',
