@@ -1,4 +1,3 @@
-# test_todo_urls.py
 from django.test import SimpleTestCase
 from django.urls import reverse, resolve
 from todo.views import TodoListCreateApiView, TodoDetailsApiView
