@@ -1,3 +1,4 @@
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -6,6 +7,9 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiRespon
 
 
 class TodoListCreateApiView(APIView):
+    """
+    this api do post and get http method
+    """
     serializer_class = serializers.ToDoSerializer
     permission_classes = (permissions.AllowAny,)
     pagination_class = paginations.CustomPagination
@@ -30,7 +34,7 @@ class TodoListCreateApiView(APIView):
                            name=field,
                            location=OpenApiParameter.QUERY,
                            type=type(field),
-                       )for field in serializer_class().fields.keys()
+                       ) for field in serializer_class().fields.keys()
                    ]
                    )
     def get(self, request):
@@ -54,10 +58,8 @@ class TodoListCreateApiView(APIView):
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(todo_s, request=request)
 
-
         serializer = self.serializer_class(page, many=True)
         return paginator.get_paginated_response(serializer.data)
-
 
     @extend_schema(tags=['ToDo'],
                    summary='this post todo information to server',
@@ -85,3 +87,95 @@ class TodoListCreateApiView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class TodoDetailsApiView(APIView):
+    """
+    this api do get put and retrieve http method
+    """
+    serializer_class = serializers.ToDoSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    @extend_schema(tags=['ToDo'],
+                   summary='this get specific todo information from server',
+                   responses={
+                       status.HTTP_200_OK: OpenApiResponse(
+                           response=serializer_class,
+                           description='i see this status when'
+                                       'the api get that work great',
+                       )
+                   },
+                   parameters=[
+                       OpenApiParameter(
+                           name=field,
+                           location=OpenApiParameter.QUERY,
+                           type=type(field),
+                       ) for field in serializer_class().fields.keys()
+                   ]
+                   )
+    def get(self, request, pk):
+        try:
+            todo = models.Todo.objects.get(id=pk)
+        except ObjectDoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.serializer_class(todo)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(tags=['ToDo'],
+                   summary='this get specific todo information from server',
+                   responses={
+                       status.HTTP_200_OK: OpenApiResponse(
+                           response=serializer_class,
+                           description='i see this status when'
+                                       'the api put that work great',
+                       ),
+                       status.HTTP_400_BAD_REQUEST: OpenApiResponse(
+                           description='when my api`s body is not valid'
+                                       'is see the response'
+                       )
+                   },
+                   parameters=[
+                       OpenApiParameter(
+                           name=field,
+                           location=OpenApiParameter.QUERY,
+                           type=type(field),
+                       ) for field in serializer_class().fields.keys()
+                   ]
+                   )
+    def put(self, request, pk):
+        try:
+            todo = models.Todo.objects.get(id=pk)
+        except ObjectDoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.serializer_class(todo, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(tags=['ToDo'],
+                   summary='this get specific todo information from server',
+                   responses={
+                       status.HTTP_204_NO_CONTENT: OpenApiResponse(
+                           response=serializer_class,
+                           description='i see this status when'
+                                       'the api delete that work great',
+                       )
+                   },
+                   parameters=[
+                       OpenApiParameter(
+                           name=field,
+                           location=OpenApiParameter.QUERY,
+                           type=type(field),
+                       ) for field in serializer_class().fields.keys()
+                   ]
+                   )
+    def delete(self, request, pk):
+        try:
+            todo = models.Todo.objects.get(id=pk)
+        except ObjectDoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        todo.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
