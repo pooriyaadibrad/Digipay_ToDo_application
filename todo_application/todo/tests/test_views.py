@@ -1,9 +1,8 @@
-# test_views.py
 from rest_framework import status
 from rest_framework.test import APITestCase
 from django.urls import reverse
 from todo.models import Todo
-from todo.serializers import ToDoSerializer
+import uuid
 
 
 class TodoListCreateAPITestCase(APITestCase):
@@ -25,14 +24,14 @@ class TodoListCreateAPITestCase(APITestCase):
         response = self.client.get(self.url, {'title': 'Sample Todo'})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)  # Expect 1 result
+        self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['title'], 'Sample Todo')
 
     def test_get_empty_todo_list(self):
         """
         Test retrieving the list of todos returns 404 when no todos exist.
         """
-        Todo.objects.all().delete()  # Clear todos for this test
+        Todo.objects.all().delete()
 
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -44,20 +43,19 @@ class TodoListCreateAPITestCase(APITestCase):
         data = {
             'title': 'New Todo',
             'description': 'This is a new todo item.',
-            'due_date': '2025-02-15',  # Update the format if using jalali
+            'due_date': '2025-02-15',
             'completed': False
         }
         response = self.client.post(self.url, data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Todo.objects.count(), 2)  # 1 existing + 1 new
+        self.assertEqual(Todo.objects.count(), 2)
         self.assertEqual(response.data['title'], 'New Todo')
 
     def test_post_todo_create_invalid(self):
         """
         Test creating a new todo with invalid data.
         """
-        # Test with missing required fields (example)
         data = {
             'description': 'This todo has no title.',
             'due_date': '2025-02-15'
@@ -65,4 +63,86 @@ class TodoListCreateAPITestCase(APITestCase):
         response = self.client.post(self.url, data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('title', response.data)  # Check for validation error
+        self.assertIn('title', response.data)
+
+
+class TodoDetailsAPITestCase(APITestCase):
+
+    def setUp(self):
+        # Create a sample Todo instance for testing
+        self.todo_id = uuid.uuid4()
+        self.todo = Todo.objects.create(
+            id=self.todo_id,
+            title='Sample Todo',
+            description='This is a sample todo item.',
+            due_date='2025-01-30',
+            completed=False
+        )
+        self.url = reverse('update_delete_retrieve', kwargs={'pk': self.todo.id})
+
+    def test_get_todo_detail(self):
+        """
+        Test retrieving the details of a specific todo.
+        """
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], str(self.todo_id))
+        self.assertEqual(response.data['title'], self.todo.title)
+
+    def test_get_non_existent_todo_detail(self):
+        """
+        Test retrieving details for a todo that does not exist.
+        """
+        non_existent_url = reverse('update_delete_retrieve', kwargs={'pk': uuid.uuid4()})  # Generate a random UUID
+        response = self.client.get(non_existent_url)
+        print(response.data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_put_todo_update(self):
+        """
+        Test updating a specific todo.
+        """
+        updated_data = {
+            'title': 'Updated Sample Todo',
+            'description': 'This is the updated description.',
+            'due_date': '2025-02-15',
+            'completed': True
+        }
+        response = self.client.put(self.url, updated_data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.todo.refresh_from_db()
+        self.assertEqual(self.todo.title, updated_data['title'])
+        self.assertTrue(self.todo.completed)
+
+    def test_put_todo_update_invalid(self):
+        """
+        Test updating a todo with invalid data (example: missing required fields).
+        """
+        invalid_data = {
+            'description': 'This todo has no title.',
+            'due_date': '2025-02-15'
+        }
+        response = self.client.put(self.url, invalid_data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('title', response.data)
+
+    def test_delete_todo(self):
+        """
+        Test deleting a specific todo.
+        """
+        response = self.client.delete(self.url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        # Check that the todo is indeed deleted
+        self.assertFalse(Todo.objects.filter(id=self.todo_id).exists())
+
+    def test_delete_non_existent_todo(self):
+        """
+        Test deleting a todo that does not exist.
+        """
+        non_existent_url = reverse('update_delete_retrieve', kwargs={'pk': uuid.uuid4()})
+        response = self.client.delete(non_existent_url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
